@@ -1,0 +1,85 @@
+# TrustContract example capability contracts.
+#
+# Every capability an agent may exercise must be declared here —
+# undeclared capabilities are denied (fail closed). Block-style YAML only:
+# the dependency-free parser supports nested mappings, "- " lists,
+# comments, and plain/quoted scalars (no flow style like [a, b]).
+
+contracts:
+  # Low-risk, read-only: allowed without a grant, still audited.
+  - name: file.read
+    description: Read files from disk
+    risk: low
+    default: allow
+    consequences:
+      side_effects:
+        - filesystem
+      reversibility: reversible
+      blast_radius: process
+
+  # State-changing: a human must approve; the grant is one-shot
+  # and expires after an hour.
+  - name: file.write
+    description: Write files to disk
+    risk: high
+    default: ask
+    expiry_seconds: 3600
+    max_uses: 1
+    consequences:
+      side_effects:
+        - filesystem
+      reversibility: manual
+      blast_radius: single-host
+
+  # Critical: irreversible, so approval requires typed confirmation
+  # (trustcontract approve --confirm shell.exec ...).
+  - name: shell.exec
+    description: Execute a shell command
+    risk: critical
+    default: ask
+    expiry_seconds: 600
+    max_uses: 1
+    consequences:
+      side_effects:
+        - process
+        - filesystem
+      reversibility: irreversible
+      blast_radius: single-host
+
+  # Network egress: allowed, but declared and audited.
+  - name: http.fetch
+    description: Fetch a URL over HTTPS
+    risk: low
+    default: allow
+    consequences:
+      side_effects:
+        - network
+      reversibility: reversible
+      blast_radius: process
+
+  # Money: escalates with explicit money + irreversibility acknowledgments.
+  - name: payment.send
+    description: Send money from a funded account
+    risk: critical
+    default: ask
+    expiry_seconds: 300
+    max_uses: 1
+    consequences:
+      side_effects:
+        - network
+        - money
+      reversibility: irreversible
+      blast_radius: public
+
+  # Hard-denied example: policy says this may never run — locked
+  # contracts deny even when a valid grant exists.
+  - name: db.drop
+    description: Drop an entire database
+    risk: critical
+    default: deny
+    locked: true
+    consequences:
+      side_effects:
+        - deletion
+      reversibility: irreversible
+      blast_radius: multi-host
